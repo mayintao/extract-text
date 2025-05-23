@@ -42,6 +42,33 @@ def upload_pdf_file():
         "first_page_text": first_page_text
     })
 
+# -------------------- 上传文件 → 保存并返回 file_id 全部文字内容 --------------------
+@app.route("/api/ai/pdf-upload-allpage", methods=["POST"])
+def upload_pdf_file_allpage():
+    file = request.files.get("file")
+    if not file or not file.filename.endswith(".pdf"):
+        return jsonify({"error": "请上传 PDF 文件"}), 400
+
+    file_id = uuid.uuid4().hex
+    filepath = os.path.join(UPLOAD_FOLDER, f"{file_id}.pdf")
+    file.save(filepath)
+
+    try:
+        doc = fitz.open(filepath)
+        total_pages = len(doc)
+        all_text = ""
+        for page_num in range(total_pages):
+            all_text += doc.load_page(page_num).get_text()
+        doc.close()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({
+        "file_id": file_id,
+        "total_pages": total_pages,
+        "all_text": all_text
+    })
+
 
 # -------------------- 提取某一页内容（通过 file_id + page 参数） --------------------
 @app.route("/api/ai/pdf-page", methods=["GET"])
